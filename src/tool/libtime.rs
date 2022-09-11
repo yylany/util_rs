@@ -22,7 +22,14 @@ pub fn get_now_micros() -> i64 {
 }
 
 pub const FORMAT: &str = "%F %H:%M:%S%.6f";
+pub const FORMAT_: &str = "%F-%H-%M-%S";
 
+pub fn format_path_day_by_micros(nanos: i64) -> String {
+    Local
+        .timestamp_nanos(nanos * 1000)
+        .format(FORMAT_)
+        .to_string()
+}
 pub fn format_day(millis: i64) -> String {
     Local.timestamp_millis(millis).format(FORMAT).to_string()
 }
@@ -59,6 +66,8 @@ pub fn time_to_seconds(s: &str) -> i64 {
     }
     // dt.with_timezone()
 }
+
+
 
 #[cfg(test)]
 mod tests {
