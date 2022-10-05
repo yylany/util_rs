@@ -3,12 +3,14 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
 use teloxide::prelude::AutoSend;
+use teloxide::types::InputFile;
+use std::path::PathBuf;
 use teloxide::{
     net,
     requests::{Requester, RequesterExt},
     Bot,
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -75,6 +77,32 @@ impl TgBot {
                     Ok(_) => {}
                     Err(_) => {
                         // error!("{:#?}", e)
+                    }
+                };
+            }
+        }
+    }
+
+    //推送文件
+    pub async fn notify_file(&self, file: String) {
+        if self.debug {
+            debug!("tg send file: {}", file);
+        } else {
+            debug!("tg send file: {}", &file);
+            let bot = self.tg_bot.clone();
+            let list = self.push_list.clone();
+
+            for x in list.iter() {
+                match bot
+                    .send_document(
+                        x.to_string(),
+                        InputFile::file(file.parse::<PathBuf>().unwrap()),
+                    )
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("{:#?}", e)
                     }
                 };
             }
