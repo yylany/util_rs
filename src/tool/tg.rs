@@ -37,29 +37,26 @@ pub struct TgBot {
     debug: bool,
 }
 
+pub fn get_boot(token: String) -> AutoSend<Bot> {
+    match env::var("HTTP_PROXY") {
+        Ok(proxy) => {
+            let client = net::default_reqwest_settings()
+                .proxy(Proxy::all(&proxy).unwrap())
+                .build()
+                .expect("Client creation failed");
+            Bot::with_client(token, client).auto_send()
+        }
+        Err(_) => Bot::new(token).auto_send(),
+    }
+}
+
+
 impl TgBot {
     pub fn new(config: &Config) -> TgBot {
-        let token = config.token.clone();
-        let push_chan = config.subscribers.clone();
-        let debug = config.debug;
-
-        match env::var("HTTP_PROXY") {
-            Ok(proxy) => {
-                let client = net::default_reqwest_settings()
-                    .proxy(Proxy::all(&proxy).unwrap())
-                    .build()
-                    .expect("Client creation failed");
-                TgBot {
-                    tg_bot: Arc::new(Bot::with_client(token, client).auto_send()),
-                    push_list: Arc::new(push_chan.clone()),
-                    debug,
-                }
-            }
-            Err(_) => TgBot {
-                tg_bot: Arc::new(Bot::new(token).auto_send()),
-                push_list: Arc::new(push_chan.clone()),
-                debug,
-            },
+        TgBot {
+            tg_bot: Arc::new(get_boot(config.token.clone())),
+            push_list: Arc::new(config.subscribers.clone()),
+            debug:config.debug,
         }
     }
 
