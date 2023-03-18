@@ -66,15 +66,30 @@ pub fn time_to_seconds(s: &str) -> i64 {
     }
     // dt.with_timezone()
 }
+pub fn time1_to_seconds(s: &str) -> i64 {
+    match DateTime::parse_from_str(
+        s,
+        "%H:%M %b %d %Y",
+        // 8:30 a.m. (ET) Thursday, November 10, 2022
+    ) {
+        Ok(dt) => dt.timestamp(),
+        Err(e) => {
+            let msg = e.to_string();
+            println!("解析时间异常：{}=> {}", s, msg);
+            0
+        }
+    }
+    // dt.with_timezone()
+}
 
 
 
 #[cfg(test)]
 mod tests {
-    use crate::tool::libtime::time_to_seconds;
+    use crate::tool::libtime::time1_to_seconds;
 
     #[test]
     fn format_str_day() {
-        println!("{}", time_to_seconds("Fri Jul 08 19:11:43 +0000 2021"));
+        println!("{}", time1_to_seconds("8:30 November 10 2022"));
     }
 }

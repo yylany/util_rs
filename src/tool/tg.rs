@@ -3,13 +3,21 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
 use teloxide::prelude::AutoSend;
-use teloxide::types::InputFile;
 use std::path::PathBuf;
 use teloxide::{
     net,
     requests::{Requester, RequesterExt},
     Bot,
+    payloads::SendMessageSetters,
+    prelude::*,
+    types::{
+        InputFile,
+        InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputMessageContent,
+        InputMessageContentText, Me,
+    },
+    utils::command::BotCommands,
 };
+use teloxide::payloads::SendAnimationSetters;
 use tracing::{debug, error, info};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,7 +64,7 @@ impl TgBot {
         TgBot {
             tg_bot: Arc::new(get_boot(config.token.clone())),
             push_list: Arc::new(config.subscribers.clone()),
-            debug:config.debug,
+            debug: config.debug,
         }
     }
 
@@ -71,6 +79,40 @@ impl TgBot {
 
             for x in list.iter() {
                 match bot.send_message(x.to_string(), msg.clone()).await {
+                    Ok(_) => {}
+                    Err(_) => {
+                        // error!("{:#?}", e)
+                    }
+                };
+            }
+        }
+    }
+
+
+    //推送消息
+    //button（第一个是：按钮名称，第二个是：回调数据）
+    pub async fn notify_with_button(&self, msg: String, button: Vec<(String, String)>) {
+        if self.debug {
+            info!("tg send msg: {}", msg);
+        } else {
+            debug!("tg send msg: {}", &msg);
+            let bot = self.tg_bot.clone();
+            let list = self.push_list.clone();
+
+            let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
+
+            for versions in button.chunks(3) {
+                let row = versions
+                    .into_iter()
+                    .map(|(t, d)| InlineKeyboardButton::callback(t, d))
+                    .collect();
+                keyboard.push(row);
+            }
+            let b = InlineKeyboardMarkup::new(keyboard);
+
+
+            for x in list.iter() {
+                match bot.send_message(x.to_string(), msg.clone()).reply_markup(b.clone()).await {
                     Ok(_) => {}
                     Err(_) => {
                         // error!("{:#?}", e)
