@@ -11,7 +11,12 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        let text = "fCm/zsBEoqxvrrBtTKtvmVnTTmjrbbRF5pWlpdVMjpZflH7eyM9Cgz5mm3blQ9po7WnaKqWXrI3YWXko5v6jO6P16UfspFDQjIXJZ0omUBs=";
+
+        let k = b"bQbGOojbKzSOo3CwbQbGOojbKzSOo3Cw";
+
+        let d = tool::aes::aes_32_ecb(text,k).unwrap();
+        println!("{}",d);
+
     }
 }

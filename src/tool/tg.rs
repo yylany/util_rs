@@ -67,6 +67,13 @@ impl TgBot {
             debug: config.debug,
         }
     }
+    pub fn new_with_bot(bot:Arc<AutoSend<Bot>>,subscribers:Vec<String>,debug:bool) -> TgBot {
+        TgBot {
+            tg_bot: bot,
+            push_list: Arc::new(subscribers),
+            debug,
+        }
+    }
 
     //推送消息
     pub async fn notify(&self, msg: String) {
