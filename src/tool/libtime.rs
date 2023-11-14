@@ -82,8 +82,6 @@ pub fn time1_to_seconds(s: &str) -> i64 {
     // dt.with_timezone()
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::tool::libtime::time1_to_seconds;

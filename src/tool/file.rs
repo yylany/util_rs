@@ -10,4 +10,3 @@ pub fn read_file_to_str(path: &str) -> Result<String> {
     file.read_to_string(&mut str)?;
     Ok(str)
 }
-

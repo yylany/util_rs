@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 
-
 // aes 128 解密
 pub fn aes_16_ecb(plaintext: &str, key: &[u8; 16]) -> Result<String> {
     use data_encoding::BASE64;

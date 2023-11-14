@@ -1,23 +1,22 @@
 use reqwest::Proxy;
 use serde::{Deserialize, Serialize};
 use std::env;
-use std::sync::Arc;
-use teloxide::prelude::AutoSend;
 use std::path::PathBuf;
+use std::sync::Arc;
+use teloxide::payloads::SendAnimationSetters;
+use teloxide::prelude::AutoSend;
 use teloxide::{
     net,
-    requests::{Requester, RequesterExt},
-    Bot,
     payloads::SendMessageSetters,
     prelude::*,
+    requests::{Requester, RequesterExt},
     types::{
-        InputFile,
-        InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputMessageContent,
-        InputMessageContentText, Me,
+        InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputFile,
+        InputMessageContent, InputMessageContentText, Me,
     },
     utils::command::BotCommands,
+    Bot,
 };
-use teloxide::payloads::SendAnimationSetters;
 use tracing::{debug, error, info};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,7 +57,6 @@ pub fn get_boot(token: String) -> AutoSend<Bot> {
     }
 }
 
-
 impl TgBot {
     pub fn new(config: &Config) -> TgBot {
         TgBot {
@@ -67,7 +65,7 @@ impl TgBot {
             debug: config.debug,
         }
     }
-    pub fn new_with_bot(bot:Arc<AutoSend<Bot>>,subscribers:Vec<String>,debug:bool) -> TgBot {
+    pub fn new_with_bot(bot: Arc<AutoSend<Bot>>, subscribers: Vec<String>, debug: bool) -> TgBot {
         TgBot {
             tg_bot: bot,
             push_list: Arc::new(subscribers),
@@ -95,7 +93,6 @@ impl TgBot {
         }
     }
 
-
     //推送消息
     //button（第一个是：按钮名称，第二个是：回调数据）
     pub async fn notify_with_button(&self, msg: String, button: Vec<(String, String)>) {
@@ -117,9 +114,12 @@ impl TgBot {
             }
             let b = InlineKeyboardMarkup::new(keyboard);
 
-
             for x in list.iter() {
-                match bot.send_message(x.to_string(), msg.clone()).reply_markup(b.clone()).await {
+                match bot
+                    .send_message(x.to_string(), msg.clone())
+                    .reply_markup(b.clone())
+                    .await
+                {
                     Ok(_) => {}
                     Err(_) => {
                         // error!("{:#?}", e)

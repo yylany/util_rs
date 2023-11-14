@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tokio::{net::TcpStream};
+use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest, error::UrlError, handshake::client::Response, Error as WsError,
 };

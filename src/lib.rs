@@ -15,8 +15,7 @@ mod tests {
 
         let k = b"bQbGOojbKzSOo3CwbQbGOojbKzSOo3Cw";
 
-        let d = tool::aes::aes_32_ecb(text,k).unwrap();
-        println!("{}",d);
-
+        let d = tool::aes::aes_32_ecb(text, k).unwrap();
+        println!("{}", d);
     }
 }
