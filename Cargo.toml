@@ -1,6 +1,6 @@
 [package]
 name = "util"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -30,4 +30,5 @@ futures-util = { version = "0.3.21", features = ["sink"] }
 websocket = "0.24.0"
 openssl = "0.10.35"
 data-encoding = "2.3.2"
-
+rust_decimal = "1.23"
+rust_decimal_macros = "1.23"
