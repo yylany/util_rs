@@ -1,4 +1,5 @@
 pub mod client;
+pub mod notify;
 pub mod tool;
 
 pub fn add(left: usize, right: usize) -> usize {
