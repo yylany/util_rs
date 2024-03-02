@@ -1,4 +1,6 @@
 pub mod client;
+
+#[cfg(feature = "notify")]
 pub mod notify;
 pub mod tool;
 

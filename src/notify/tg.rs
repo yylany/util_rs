@@ -6,11 +6,20 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, thread};
-use telegram_bot::{
-    types::ToChatRef, Api, ChatId, ChatRef, InputFileUpload, Message, SendDocument, SendMessage,
-    Text,
+use teloxide::payloads::SendAnimationSetters;
+use teloxide::prelude::AutoSend;
+use teloxide::{
+    net,
+    payloads::SendMessageSetters,
+    prelude::*,
+    requests::{Requester, RequesterExt},
+    types::{
+        InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputFile,
+        InputMessageContent, InputMessageContentText, Me,
+    },
+    utils::command::BotCommands,
+    Bot,
 };
-
 use tracing::{debug, error, info};
 
 /// 加载tg 消息通道
@@ -101,14 +110,6 @@ impl Debug for SendType {
     }
 }
 
-pub struct ThisChatId(i64);
-
-impl ToChatRef for ThisChatId {
-    fn to_chat_ref(&self) -> ChatRef {
-        ChatRef::Id(ChatId::from(self.0))
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(rename = "debug")]
@@ -124,45 +125,41 @@ pub struct Config {
 //用于tg消息的推送
 pub struct TgBot {
     //tg机器人推送
-    tg_bot: Api,
+    tg_bot: Arc<AutoSend<Bot>>,
 
     //推送列表
-    push_list: Arc<Vec<ThisChatId>>,
+    push_list: Arc<Vec<String>>,
 
     //false: send msg
     //true: println msg
     debug: bool,
 }
 
-pub fn get_boot(token: String) -> Api {
-    Api::new(token)
+pub fn get_boot(token: String) -> AutoSend<Bot> {
+    match env::var("HTTP_PROXY") {
+        Ok(proxy) => {
+            let client = net::default_reqwest_settings()
+                .proxy(Proxy::all(&proxy).unwrap())
+                .build()
+                .expect("Client creation failed");
+            Bot::with_client(token, client).auto_send()
+        }
+        Err(_) => Bot::new(token).auto_send(),
+    }
 }
 
 impl TgBot {
     pub fn new(config: &Config) -> TgBot {
         TgBot {
-            tg_bot: get_boot(config.token.clone()),
-            push_list: Arc::new(
-                config
-                    .subscribers
-                    .clone()
-                    .into_iter()
-                    .map(|s| ThisChatId(s.parse().unwrap()))
-                    .collect(),
-            ),
+            tg_bot: Arc::new(get_boot(config.token.clone())),
+            push_list: Arc::new(config.subscribers.clone()),
             debug: config.debug,
         }
     }
-
-    pub fn new_with_bot(bot: Api, subscribers: Vec<String>, debug: bool) -> TgBot {
+    pub fn new_with_bot(bot: Arc<AutoSend<Bot>>, subscribers: Vec<String>, debug: bool) -> TgBot {
         TgBot {
             tg_bot: bot,
-            push_list: Arc::new(
-                subscribers
-                    .into_iter()
-                    .map(|s| ThisChatId(s.parse().unwrap()))
-                    .collect(),
-            ),
+            push_list: Arc::new(subscribers),
             debug,
         }
     }
@@ -177,8 +174,12 @@ impl TgBot {
             let list = self.push_list.clone();
 
             for x in list.iter() {
-                let msg_req = SendMessage::new(x, msg.clone());
-                bot.send(msg_req).await;
+                match bot.send_message(x.to_string(), msg.clone()).await {
+                    Ok(_) => {}
+                    Err(_) => {
+                        // error!("{:#?}", e)
+                    }
+                };
             }
         }
     }
@@ -186,37 +187,37 @@ impl TgBot {
     //推送消息
     //button（第一个是：按钮名称，第二个是：回调数据）
     pub async fn notify_with_button(&self, msg: String, button: Vec<(String, String)>) {
-        // if self.debug {
-        //     info!("tg send msg: {}", msg);
-        // } else {
-        //     debug!("tg send msg: {}", &msg);
-        //     let bot = self.tg_bot.clone();
-        //     let list = self.push_list.clone();
-        //
-        //     let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
-        //
-        //     for versions in button.chunks(3) {
-        //         let row = versions
-        //             .into_iter()
-        //             .map(|(t, d)| InlineKeyboardButton::callback(t, d))
-        //             .collect();
-        //         keyboard.push(row);
-        //     }
-        //     let b = InlineKeyboardMarkup::new(keyboard);
-        //
-        //     for x in list.iter() {
-        //         match bot
-        //             .send_message(x.to_string(), msg.clone())
-        //             .reply_markup(b.clone())
-        //             .await
-        //         {
-        //             Ok(_) => {}
-        //             Err(_) => {
-        //                 // error!("{:#?}", e)
-        //             }
-        //         };
-        //     }
-        // }
+        if self.debug {
+            info!("tg send msg: {}", msg);
+        } else {
+            debug!("tg send msg: {}", &msg);
+            let bot = self.tg_bot.clone();
+            let list = self.push_list.clone();
+
+            let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
+
+            for versions in button.chunks(3) {
+                let row = versions
+                    .into_iter()
+                    .map(|(t, d)| InlineKeyboardButton::callback(t, d))
+                    .collect();
+                keyboard.push(row);
+            }
+            let b = InlineKeyboardMarkup::new(keyboard);
+
+            for x in list.iter() {
+                match bot
+                    .send_message(x.to_string(), msg.clone())
+                    .reply_markup(b.clone())
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(_) => {
+                        // error!("{:#?}", e)
+                    }
+                };
+            }
+        }
     }
 
     //推送文件
@@ -229,9 +230,18 @@ impl TgBot {
             let list = self.push_list.clone();
 
             for x in list.iter() {
-                let file = InputFileUpload::with_path(Text::from(file.clone()));
-                let msg_req = SendDocument::new(x, file);
-                bot.send(msg_req).await;
+                match bot
+                    .send_document(
+                        x.to_string(),
+                        InputFile::file(file.parse::<PathBuf>().unwrap()),
+                    )
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("{:#?}", e)
+                    }
+                };
             }
         }
     }
