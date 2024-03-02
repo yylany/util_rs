@@ -1,4 +1,3 @@
-#[cfg(feature = "aes")]
 pub mod aes;
 
 pub mod file;
