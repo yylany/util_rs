@@ -21,7 +21,7 @@ fn decrypt_aes_128_ecb(ciphertext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     Ok(buffer)
 }
 
-fn decrypt_aes_256_ecb(ciphertext: &[u8], key: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
+fn decrypt_aes_256_ecb(ciphertext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     if key.len() != 32 {
         return Err(anyhow::anyhow!("密钥长度必须为 256 位（32 字节）"));
     }
@@ -35,12 +35,12 @@ fn decrypt_aes_256_ecb(ciphertext: &[u8], key: &[u8]) -> Result<Vec<u8>, anyhow:
     // 初始化 AES-256-ECB cipher
     let cipher = Aes256::new(key);
 
-    // 解密数据
-    let decrypted_data = cipher
-        .decrypt_vec(ciphertext)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let mut buffer = Vec::from(ciphertext);
+    for chunk in buffer.chunks_mut(32) {
+        cipher.decrypt_block(GenericArray::from_mut_slice(chunk));
+    }
 
-    Ok(decrypted_data)
+    Ok(buffer)
 }
 
 // aes 128 解密
