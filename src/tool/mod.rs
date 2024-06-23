@@ -1,8 +1,10 @@
-pub mod aes;
+use std::collections::HashSet;
 
+pub mod aes;
 pub mod file;
 pub mod libtime;
 pub mod random;
+pub mod remove_list;
 pub mod req;
 pub mod typ;
 
@@ -15,4 +17,10 @@ pub fn base_trim(base: &str) -> &str {
     } else {
         ts
     }
+}
+
+pub fn blacklist_detach(li: &str) -> HashSet<String> {
+    li.split(",")
+        .map(|s| s.trim().trim_matches('\"').trim().to_string())
+        .collect()
 }
