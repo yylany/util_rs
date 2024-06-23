@@ -26,9 +26,9 @@ pub struct RemoveConfig {
     // 匹配的规则id
     pub rule_id: String,
     // 远程 黑名单url
-    pub black_url: String,
+    pub black_url: Option<String>,
     // 远程 白名单url
-    pub white_url: String,
+    pub white_url: Option<String>,
 }
 
 pub async fn url_call(msg: &str, call_urls: &Vec<String>, call_count: i32) {
@@ -83,8 +83,12 @@ pub async fn load_all_list(ops: &[&RemoveConfig]) -> Result<(HashSet<String>, Ha
     let mut whitelist: HashSet<String> = HashSet::new();
 
     for op_c in ops {
-        merge(&op_c.black_url, &mut blacklist).await?;
-        merge(&op_c.white_url, &mut whitelist).await?;
+        if let Some(u) = &op_c.black_url {
+            merge(u, &mut blacklist).await?;
+        }
+        if let Some(u) = &op_c.white_url {
+            merge(u, &mut whitelist).await?;
+        }
     }
 
     Ok((blacklist, whitelist))
