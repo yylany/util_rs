@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -28,6 +29,19 @@ pub struct RemoveConfig {
     pub black_url: String,
     // 远程 白名单url
     pub white_url: String,
+}
+
+pub async fn url_call(msg: &str, call_urls: &Vec<String>, call_count: i32) {
+    for _ in 0..call_count {
+        for url in call_urls {
+            // 替换成实际请求的url
+            let nurl = url.replace("{}", &msg);
+            tokio::spawn(async move {
+                super::req::get(&nurl, None, &None).await.unwrap();
+            });
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }
 
 pub async fn load_match_list_and_merge(
