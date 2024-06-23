@@ -3,6 +3,7 @@ pub mod aes;
 pub mod file;
 pub mod libtime;
 pub mod random;
+mod req;
 pub mod typ;
 
 /// base 别名移除
