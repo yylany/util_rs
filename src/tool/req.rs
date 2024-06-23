@@ -6,28 +6,97 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
-use anyhow::Result;
-use reqwest::{ClientBuilder, StatusCode, Url};
+use anyhow::{anyhow, Result};
+use reqwest::{ClientBuilder, Response, StatusCode, Url};
 
-pub async fn exec_get(
+pub async fn get(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
-) -> Result<(StatusCode, String)> {
-    let cli = gen_client_builder(&None).build()?;
-    let mut req_build = cli.get(url);
+) -> Result<String> {
+    let resp = _get(url, req_head, proxy).await;
+    let mut _req_head = Vec::new();
 
+    if let Some(req_heads) = req_head {
+        // 添加默认的请求头参数
+        for (k, v) in req_heads.iter() {
+            _req_head.push(format!("{}: {}", k, v));
+        }
+    }
+
+    handler_resp(resp, url, &_req_head).await
+}
+
+async fn _get(
+    url: &str,
+    req_head: Option<&HashMap<String, String>>,
+    proxy: &Option<String>,
+) -> Result<Response> {
+    let cli = gen_client_builder(proxy).build()?;
+
+    let mut req_build = cli.get(url);
     if let Some(req_heads) = req_head {
         // 添加默认的请求头参数
         for (k, v) in req_heads.iter() {
             req_build = req_build.header(k.as_str(), v);
         }
     }
+
     let resp = req_build.send().await?;
+    Ok(resp)
+}
+
+pub async fn exec_get(
+    url: &str,
+    req_head: Option<&HashMap<String, String>>,
+    proxy: &Option<String>,
+) -> Result<(StatusCode, String)> {
+    let resp = _get(url, req_head, proxy).await?;
     let status = resp.status();
-    // let heads = resp.headers();
     let text = resp.text().await?;
     Ok((status, text))
+}
+
+async fn handler_resp(rs_resp: Result<Response>, ur: &str, head: &Vec<String>) -> Result<String> {
+    let resp = match rs_resp {
+        Ok(resp) => resp,
+        Err(err) => {
+            let msg = format!(
+                r#"请求url：{}
+    请求头 :
+{}
+    错误信息 {}
+                "#,
+                ur,
+                head.join("\n"),
+                err
+            );
+            return Err(anyhow!(msg));
+        }
+    };
+
+    let body = match resp.status() {
+        //只有在请求200的情况下，才会执行
+        StatusCode::OK => resp.text().await?,
+
+        u => {
+            let msg = format!(
+                r#"请求url：{}
+    请求头 :
+{}
+    状态码：{}
+    错误信息 {}
+                "#,
+                ur,
+                head.join("\n"),
+                u,
+                resp.text().await?
+            );
+            return Err(anyhow!(msg));
+        }
+    };
+
+    Ok(body)
 }
 
 /// 生成 ClientBuilder
