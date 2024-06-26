@@ -1,11 +1,12 @@
-use crossbeam_channel::{bounded, unbounded, SendTimeoutError, Sender};
-use reqwest::Proxy;
-use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, thread};
+
+use crossbeam_channel::{bounded, unbounded, SendTimeoutError, Sender};
+use reqwest::Proxy;
+use serde::{Deserialize, Serialize};
 use teloxide::payloads::SendAnimationSetters;
 use teloxide::prelude::AutoSend;
 use teloxide::{
@@ -15,12 +16,12 @@ use teloxide::{
     requests::{Requester, RequesterExt},
     types::{
         InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputFile,
-        InputMessageContent, InputMessageContentText, Me,
+        InputMessageContentText,
     },
     utils::command::BotCommands,
     Bot,
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 
 /// 加载tg 消息通道
 pub fn load_tg(config: &Config) -> Sender<SendType> {
@@ -242,6 +243,43 @@ impl TgBot {
                         error!("{:#?}", e)
                     }
                 };
+            }
+        }
+    }
+
+    //推送文件
+    pub async fn notify_file_with_msg(&self, file: String, msg: Option<String>) {
+        if self.debug {
+            debug!("tg send file: {}", file);
+        } else {
+            trace!("tg send file: {}", &file);
+            let bot = self.tg_bot.clone();
+            let list = self.push_list.clone();
+
+            for x in list.iter() {
+                loop {
+                    let s = bot.send_document(
+                        x.to_string(),
+                        InputFile::file(file.parse::<PathBuf>().unwrap()),
+                    );
+
+                    let result = match &msg {
+                        None => s.await,
+                        Some(text) => {
+                            info!("{}", text);
+                            s.caption(text).await
+                        }
+                    };
+
+                    match result {
+                        Ok(d) => {
+                            break;
+                        }
+                        Err(e) => {
+                            error!("{:#?}", e)
+                        }
+                    };
+                }
             }
         }
     }
