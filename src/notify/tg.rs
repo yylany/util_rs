@@ -42,6 +42,9 @@ pub fn load_tg(config: &Config) -> Sender<SendType> {
                 match msg {
                     SendType::Msg(s) => rn.block_on(notify.notify(s)),
                     SendType::File(p) => rn.block_on(notify.notify_file(p)),
+                    SendType::FileWarpMsg((p, msg)) => {
+                        rn.block_on(notify.notify_file_with_msg(p, msg))
+                    }
                 };
             }
         });
@@ -83,7 +86,7 @@ pub fn load_tg(config: &Config) -> Sender<SendType> {
                         }
                     }
                 }
-                SendType::File(_) => {
+                _ => {
                     send.send(msg);
                 }
             }
@@ -96,6 +99,7 @@ pub fn load_tg(config: &Config) -> Sender<SendType> {
 pub enum SendType {
     Msg(String),
     File(String),
+    FileWarpMsg((String, Option<String>)),
 }
 
 impl Debug for SendType {
@@ -106,6 +110,10 @@ impl Debug for SendType {
             }
             SendType::File(m) => {
                 write!(f, "文件： {}", m)
+            }
+
+            SendType::FileWarpMsg((m, msg)) => {
+                write!(f, "文件： {}; 附带消息：{:?}", m, msg)
             }
         }
     }
