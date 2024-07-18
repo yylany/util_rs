@@ -3,6 +3,7 @@ use std::collections::HashSet;
 pub mod aes;
 pub mod file;
 pub mod libtime;
+pub mod opencall;
 pub mod random;
 pub mod remove_list;
 pub mod req;

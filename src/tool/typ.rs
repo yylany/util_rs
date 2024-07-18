@@ -1,8 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use serde::de::{Error, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct MyI64(i64);
@@ -108,4 +109,22 @@ impl<'de> Deserialize<'de> for MyDecimal {
             }
         }
     }
+}
+
+// 将 Decimal 类型json 序列化为 i64 数值
+//用法：在 字段上面加 #[serde(serialize_with = "serialize_decimal_toi64")]
+fn serialize_decimal_toi64<S>(value: &Decimal, serializer: S) -> anyhow::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_i64(value.to_i64().unwrap_or_default())
+}
+
+// 将 Decimal 类型json 序列化为 f64 数值
+//用法：在 字段上面加 #[serde(serialize_with = "serialize_decimal_tof64")]
+fn serialize_decimal_tof64<S>(value: &Decimal, serializer: S) -> anyhow::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_f64(value.to_f64().unwrap_or_default())
 }
