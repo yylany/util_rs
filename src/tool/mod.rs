@@ -2,12 +2,15 @@ use std::collections::HashSet;
 
 pub mod aes;
 pub mod file;
+mod hosts;
 pub mod libtime;
-pub mod opencall;
 pub mod random;
 pub mod remove_list;
 pub mod req;
 pub mod typ;
+
+#[cfg(feature = "openssl")]
+pub mod openssl_aes;
 
 /// base 别名移除
 pub fn base_trim(base: &str) -> &str {
