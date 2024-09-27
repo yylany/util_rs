@@ -100,7 +100,7 @@ pub async fn load_all_list(
 }
 
 //retry 重试次数
-async fn merge(url: &str, data: &mut HashSet<String>, retry: u8) -> Result<()> {
+pub async fn merge(url: &str, data: &mut HashSet<String>, retry: u8) -> Result<()> {
     let mut er = Ok(());
 
     for _ in 0..retry {
