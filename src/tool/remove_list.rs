@@ -49,8 +49,9 @@ pub async fn load_match_list_and_merge(
     ops: &Vec<RemoveConfig>,
     target_blacklist: &mut HashSet<String>,
     target_whitelist: &mut HashSet<String>,
+    retry: u8,
 ) -> Result<()> {
-    let (blacklist, whitelist) = load_match_list(rule_id, ops).await?;
+    let (blacklist, whitelist) = load_match_list(rule_id, ops, retry).await?;
     hash_set_merge(target_blacklist, blacklist);
     hash_set_merge(target_whitelist, whitelist);
     Ok(())
@@ -61,12 +62,13 @@ pub async fn load_match_list_and_merge(
 pub async fn load_match_list(
     rule_id: &str,
     ops: &Vec<RemoveConfig>,
+    retry: u8,
 ) -> Result<(HashSet<String>, HashSet<String>)> {
     let d = ops
         .iter()
         .filter(|op| op.rule_id.as_str() == rule_id)
         .collect::<Vec<_>>();
-    load_all_list(&d).await
+    load_all_list(&d, retry).await
 }
 
 /// 将 source 数据合并到 target 中
@@ -78,29 +80,46 @@ pub fn hash_set_merge(target: &mut HashSet<String>, source: HashSet<String>) {
 
 /// 加载所有 黑白名单
 /// 第一个；黑名单列表。，第二个 白名单列表
-pub async fn load_all_list(ops: &[&RemoveConfig]) -> Result<(HashSet<String>, HashSet<String>)> {
+pub async fn load_all_list(
+    ops: &[&RemoveConfig],
+    retry: u8,
+) -> Result<(HashSet<String>, HashSet<String>)> {
     let mut blacklist: HashSet<String> = HashSet::new();
     let mut whitelist: HashSet<String> = HashSet::new();
 
     for op_c in ops {
         if let Some(u) = &op_c.black_url {
-            merge(u, &mut blacklist).await?;
+            merge(u, &mut blacklist, retry).await?;
         }
         if let Some(u) = &op_c.white_url {
-            merge(u, &mut whitelist).await?;
+            merge(u, &mut whitelist, retry).await?;
         }
     }
 
     Ok((blacklist, whitelist))
 }
 
-async fn merge(url: &str, data: &mut HashSet<String>) -> Result<()> {
-    let text = super::req::get(url, None, &None).await?;
-    if text.is_empty() {
-        return Err(anyhow!("响应数据为空"));
+//retry 重试次数
+async fn merge(url: &str, data: &mut HashSet<String>, retry: u8) -> Result<()> {
+    let mut er = Ok(());
+
+    for _ in 0..retry {
+        let text = match super::req::get(url, None, &None).await {
+            Ok(s) => s,
+            Err(err) => {
+                er = Err(err);
+                continue;
+            }
+        };
+
+        if text.is_empty() {
+            er = Err(anyhow!("响应数据为空"));
+            continue;
+        }
+
+        hash_set_merge(data, blacklist_detach(&text));
+        return Ok(());
     }
 
-    hash_set_merge(data, blacklist_detach(&text));
-
-    Ok(())
+    er
 }
