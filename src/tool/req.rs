@@ -67,7 +67,7 @@ pub async fn exec_post(
     Ok((status, text))
 }
 
-async fn exec_req(
+pub async fn exec_req(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
@@ -91,7 +91,11 @@ async fn exec_req(
     Ok(resp)
 }
 
-async fn handler_resp(rs_resp: Result<Response>, ur: &str, head: &Vec<String>) -> Result<String> {
+pub async fn handler_resp(
+    rs_resp: Result<Response>,
+    ur: &str,
+    head: &Vec<String>,
+) -> Result<String> {
     let resp = match rs_resp {
         Ok(resp) => resp,
         Err(err) => {
@@ -134,7 +138,7 @@ async fn handler_resp(rs_resp: Result<Response>, ur: &str, head: &Vec<String>) -
 }
 
 /// 生成 ClientBuilder
-fn gen_client_builder(proxy: &Option<String>) -> ClientBuilder {
+pub fn gen_client_builder(proxy: &Option<String>) -> ClientBuilder {
     let cli = ClientBuilder::new();
     with_proxy(cli, proxy)
 }
