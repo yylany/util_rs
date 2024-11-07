@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
@@ -30,6 +30,17 @@ pub struct RemoveConfig {
     // 远程 白名单url
     pub white_url: Option<String>,
 }
+
+// 远程的
+#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveForcePricePre {
+    // 默认溢价
+    pub default_max_pre: f64,
+    // 规则 对应的配置选项
+    pub ops: HashMap<String, f64>,
+}
+
 
 pub async fn url_call(msg: &str, call_urls: &Vec<String>, call_count: i32) {
     for _ in 0..call_count {
@@ -119,6 +130,43 @@ pub async fn merge(url: &str, data: &mut HashSet<String>, retry: u8) -> Result<(
 
         hash_set_merge(data, blacklist_detach(&text));
         return Ok(());
+    }
+
+    er
+}
+
+//retry 重试次数
+//当 文件不为空，并且正常解析就将文本写入到 file_save_path 中；
+pub async fn force_price_pre_load<T>(url: &str, retry: u8, file_save_path: Option<&str>) -> Result<T>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let mut er = Err(anyhow!("加载失败"));
+
+    for _ in 0..retry {
+        let text = match super::req::get(url, None, &None).await {
+            Ok(s) => s,
+            Err(err) => {
+                er = Err(err);
+                continue;
+            }
+        };
+
+        if text.is_empty() {
+            er = Err(anyhow!("响应数据为空"));
+            continue;
+        }
+
+        let d = serde_json::from_str(&text)?;
+
+        if let Some(file_save_path) = file_save_path {
+            // 先删除文件，避免有其他写入意外
+            tokio::fs::remove_file(file_save_path).await?;
+            tokio::fs::write(file_save_path, text).await?;
+        }
+
+
+        return Ok(d);
     }
 
     er
