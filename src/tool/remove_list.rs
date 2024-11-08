@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+use crate::tool::blacklist_detach;
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
-
-use crate::tool::blacklist_detach;
+use tracing::error;
 
 /// 配置文件
 #[derive(Debug, Deserialize)]
@@ -161,8 +161,12 @@ where
 
         if let Some(file_save_path) = file_save_path {
             // 先删除文件，避免有其他写入意外
-            tokio::fs::remove_file(file_save_path).await?;
-            tokio::fs::write(file_save_path, text).await?;
+            if let Err(err) = tokio::fs::remove_file(file_save_path).await {
+                error!("删除 {} 文件失败：{err}",file_save_path);
+            }
+            if let Err(err) = tokio::fs::write(file_save_path, text).await {
+                error!("写入 {} 文件失败：{err}",file_save_path);
+            }
         }
 
 
