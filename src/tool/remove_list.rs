@@ -157,7 +157,7 @@ where
             continue;
         }
 
-        let d = serde_json::from_str(&text)?;
+        let d = str_to_t(&text)?;
 
         if let Some(file_save_path) = file_save_path {
             // 先删除文件，避免有其他写入意外
@@ -170,4 +170,19 @@ where
     }
 
     er
+}
+
+
+pub fn str_to_t<T>(text: &str) -> Result<T>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let d = match serde_json::from_str::<T>(text) {
+        Ok(s) => { s }
+        Err(_) => {
+            toml::from_str::<T>(text)?
+        }
+    };
+
+    Ok(d)
 }
