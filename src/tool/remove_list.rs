@@ -3,11 +3,11 @@ use std::time::Duration;
 
 use crate::tool::blacklist_detach;
 use anyhow::{anyhow, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 /// 配置文件
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoveList {
     // 发生错误时；调用 bark api
@@ -20,7 +20,7 @@ pub struct RemoveList {
 }
 
 /// 配置文件
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoveConfig {
     // 匹配的规则id
