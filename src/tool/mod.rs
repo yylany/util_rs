@@ -11,6 +11,7 @@ pub mod typ;
 
 #[cfg(feature = "openssl")]
 pub mod openssl_aes;
+pub mod num;
 
 /// base 别名移除
 pub fn base_trim(base: &str) -> &str {
