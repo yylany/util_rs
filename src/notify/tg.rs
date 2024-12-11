@@ -9,6 +9,7 @@ use reqwest::Proxy;
 use serde::{Deserialize, Serialize};
 use teloxide::payloads::SendAnimationSetters;
 use teloxide::prelude::AutoSend;
+use teloxide::types::{InputMedia, InputMediaDocument};
 use teloxide::{
     net,
     payloads::SendMessageSetters,
@@ -44,6 +45,9 @@ pub fn load_tg(config: &Config) -> Sender<SendType> {
                     SendType::File(p) => rn.block_on(notify.notify_file(p)),
                     SendType::FileWarpMsg((p, msg)) => {
                         rn.block_on(notify.notify_file_with_msg(p, msg))
+                    }
+                    SendType::FilesWarpMsg(p, msg) => {
+                        rn.block_on(notify.notify_files_with_msg(p, msg))
                     }
                 };
             }
@@ -100,6 +104,8 @@ pub enum SendType {
     Msg(String),
     File(String),
     FileWarpMsg((String, Option<String>)),
+
+    FilesWarpMsg(Vec<String>, Option<String>),
 }
 
 impl Debug for SendType {
@@ -114,6 +120,9 @@ impl Debug for SendType {
 
             SendType::FileWarpMsg((m, msg)) => {
                 write!(f, "文件： {}; 附带消息：{:?}", m, msg)
+            }
+            SendType::FilesWarpMsg(m, msg) => {
+                write!(f, "文件： {:?}  附带信息: {:?}", m, msg)
             }
         }
     }
@@ -247,6 +256,46 @@ impl TgBot {
                     .await
                 {
                     Ok(_) => {}
+                    Err(e) => {
+                        error!("{:#?}", e)
+                    }
+                };
+            }
+        }
+    }
+
+    //推送文件
+    pub async fn notify_files_with_msg(&self, files: Vec<String>, msg: Option<String>) {
+        if self.debug {
+            debug!("tg send file: {:?}", files);
+        } else {
+            debug!("tg send file: {:?}", &files);
+            let bot = self.tg_bot.clone();
+            let list = self.push_list.clone();
+
+            let mut send_fs_item = Vec::new();
+
+            let file_size = files.len();
+
+            for (index, file) in files.into_iter().enumerate() {
+                let fs = InputFile::file(file.parse::<PathBuf>().unwrap());
+
+                let item = if file_size == (index + 1) {
+                    InputMedia::Document(InputMediaDocument::new(fs).caption(msg.as_ref().unwrap()))
+                } else {
+                    InputMedia::Document(InputMediaDocument::new(fs))
+                };
+
+                send_fs_item.push(item);
+            }
+
+            for x in list.iter() {
+                let s = bot.send_media_group(x.to_string(), send_fs_item.clone());
+
+                let result = s.await;
+
+                match result {
+                    Ok(d) => {}
                     Err(e) => {
                         error!("{:#?}", e)
                     }
