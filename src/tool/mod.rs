@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 pub mod aes;
 pub mod file;
-mod hosts;
+pub mod hosts;
 pub mod libtime;
 pub mod random;
 pub mod remove_list;

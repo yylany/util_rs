@@ -1,4 +1,6 @@
 use anyhow::Result;
+use futures_util::TryFutureExt;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest, error::UrlError, handshake::client::Response, Error as WsError,
@@ -44,4 +46,15 @@ where
     let inbound = TcpStream::connect(addr).await.map_err(WsError::Io)?;
     inbound.set_nodelay(true)?;
     tokio_tungstenite::client_async_tls(request, inbound).await
+}
+
+pub async fn connect_to_ws_with_timeout(
+    url: &str,
+    d: Duration,
+) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>> {
+    let (socket, _) = tokio::time::timeout(d, connect_ws(url).map_err(anyhow::Error::from))
+        .map_err(|_| anyhow::anyhow!("timeout"))
+        .await
+        .and_then(std::convert::identity)?;
+    Ok(socket)
 }
