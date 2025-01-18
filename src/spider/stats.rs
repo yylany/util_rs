@@ -14,7 +14,7 @@ pub struct RequestStats {
 
 impl RequestStats {
     /// 创建一个新的统计实例，并记录初始化时间和开始时间
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             inner: Mutex::new(InnerStats::new()),
         }
