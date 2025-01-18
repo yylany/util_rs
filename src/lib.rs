@@ -3,7 +3,7 @@ pub mod client;
 #[cfg(feature = "notify")]
 pub mod notify;
 pub mod tool;
-mod spider;
+pub mod spider;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
