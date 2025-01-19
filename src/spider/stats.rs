@@ -25,7 +25,7 @@ impl RequestStats {
         &self,
         request_time: i64,
         response_time: i64,
-        status_code: String,
+        status_code: u16,
         result: RequestResult, // 使用枚举表示请求结果
     ) {
         self.inner
@@ -91,7 +91,7 @@ struct InnerStats {
     // 连接失败次数
     pub connection_errors: i64,
     // HTTP 状态码统计（键为状态码，值为出现次数）
-    pub http_status_codes: HashMap<String, i64>,
+    pub http_status_codes: HashMap<u16, i64>,
     // 总请求延迟（毫秒）
     pub total_latency: i64,
     // 平均请求延迟（毫秒）
@@ -122,7 +122,7 @@ impl InnerStats {
         &mut self,
         request_time: i64,
         response_time: i64,
-        status_code: String,
+        status_code: u16,
         result: RequestResult, // 使用枚举表示请求结果
     ) {
         // 增加总请求数
@@ -214,7 +214,11 @@ impl InnerStats {
             total_requests: self.total_requests,
             cache_hit_rate,            // 假设没有缓存相关数据，可以根据需要补充
             cache_hit: self.cache_hit, // 假设没有缓存相关数据，可以根据需要补充
-            http_status_codes: self.http_status_codes.clone(),
+            http_status_codes: self
+                .http_status_codes
+                .iter()
+                .map(|(k, v)| (k.to_string(), *v))
+                .collect(),
             average_request_latency: self.average_latency,
             hosts_ping_delay: HashMap::new(), // 假设没有主机延迟数据，可以根据需要补充
             system_resources: get_system_resources(),

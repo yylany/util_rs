@@ -53,7 +53,7 @@ pub static SPIDER_STATS_PUSH: Global<Sender<String>> = Global::new();
 // 初始化爬虫推送
 pub fn init_spider_vars(push_target: Vec<String>) -> Result<()> {
     let s = push::load_broadcast_chan(push_target);
-    SPIDER_STATS_PUSH.init(s).map_err(|err| anyhow!("{err}"))?;
+    SPIDER_STATS_PUSH.init(s).map_err(|err| anyhow!("{:?}",err))?;
 
     Ok(())
 }
@@ -62,7 +62,7 @@ pub fn init_spider_vars(push_target: Vec<String>) -> Result<()> {
 pub fn update_stats(
     request_time: i64,
     response_time: i64,
-    status_code: String,
+    status_code: u16,
     result: RequestResult, // 使用枚举表示请求结果
 ) {
     SPIDER_STATS.update_stats(request_time, response_time, status_code, result)
