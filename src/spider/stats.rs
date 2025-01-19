@@ -35,16 +35,13 @@ impl RequestStats {
 
     /// 将当前统计数据拼装到 `Stats` 结构体中，并清空当前统计数据
     /// 统计的时候需要传入 hosts + port 信息
-    pub fn to_stats_and_reset(
+    pub fn to_stats_and_reset<'a>(
         &self,
-        server_name: String,
-        scraper_name: String,
-        project_code: String,
-        scraper_type: String,
+        base: &'a StatsBase,
 
         // 用于测试 hosts 的延迟
         host_info: Option<(Vec<String>, u16)>,
-    ) -> Stats {
+    ) -> Stats<'a> {
         let mut host_ping = HashMap::new();
 
         if let Some((hosts, port)) = host_info {
@@ -63,7 +60,7 @@ impl RequestStats {
         }
 
         let mut data = self.inner.lock();
-        let mut d = data.to_stats_and_reset(server_name, scraper_name, project_code, scraper_type);
+        let mut d = data.to_stats_and_reset(base);
         d.hosts_ping_delay = host_ping;
 
         // 替换统计对象信息
@@ -164,13 +161,7 @@ impl InnerStats {
     }
 
     /// 将当前统计数据拼装到 `Stats` 结构体中，并清空当前统计数据
-    pub fn to_stats_and_reset(
-        &mut self,
-        server_name: String,
-        scraper_name: String,
-        project_code: String,
-        scraper_type: String,
-    ) -> Stats {
+    pub fn to_stats_and_reset<'a>(&mut self, base: &'a StatsBase) -> Stats<'a> {
         // 获取当前时间作为结束时间
         let end_time = libtime::get_now_millis();
 
@@ -202,11 +193,7 @@ impl InnerStats {
 
         // 构造 `Stats` 结构体
         let stats = Stats {
-            server_name,
-            scraper_name,
-            project_code,
-            scraper_type,
-            request_frequency: self.total_requests / ((time_period.end - time_period.start) / 1000),
+            base,
             time_period,
             error_rate,
             exception_types,

@@ -2,8 +2,8 @@ pub mod client;
 
 #[cfg(feature = "notify")]
 pub mod notify;
-pub mod tool;
 pub mod spider;
+pub mod tool;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
@@ -11,11 +11,13 @@ pub fn add(left: usize, right: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::spider;
     use crate::spider::stats::get_system_resources;
+    use crate::spider::{RequestStatsConfig, StatsBase};
+    use anyhow::Result;
 
     #[test]
     fn it_works() {
-
         // 1000XXXUSDT，10000XXXUSDT，1000000XXXUSDT 1MXXXUSDT
 
         assert_eq!(super::tool::base_trim("1000XXXUSDT"), "XXXUSDT");
@@ -43,5 +45,28 @@ mod tests {
             system_resources.disk_usage.used, system_resources.disk_usage.total
         );
 
+        let base = StatsBase {
+            server_name: "".to_string(),
+            scraper_name: "".to_string(),
+            project_code: "".to_string(),
+            scraper_type: "".to_string(),
+            request_frequency: 0,
+        };
+
+        spider::init_spider_vars(
+            RequestStatsConfig {
+                target: vec![],
+                reporting_cycle: Default::default(),
+                host_test_port: 0,
+            },
+            base,
+            // Box::new(|| Ok(vec!["ssss".to_string()])),
+            Box::new(get_hosts),
+        )
+            .unwrap()
+    }
+
+    fn get_hosts() -> Result<Vec<String>> {
+        Ok(vec!["ssss".to_string()])
     }
 }

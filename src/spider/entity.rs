@@ -1,16 +1,36 @@
+use crate::tool::deserialize_duration;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::Duration;
+
+// 请求统计配置信息
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestStatsConfig {
+    // 推送目标主机信息
+    pub target: Vec<String>,
+    // 上报周期
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub reporting_cycle: Duration,
+
+    // hosts 测试的默认端口
+    #[serde(default = "default_host_test_port")]
+    pub host_test_port: u16,
+}
+
+fn default_host_test_port() -> u16 {
+    443
+}
 
 /// 请求结果的枚举类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RequestResult {
-    Successful,       // 处理成功+请求成功  这个是没有命中缓存的
-    SuccessfulAndCache,       // 处理成功+请求成功 + 命中缓存
-    ParseError,       // 解析错误
-    TimeoutError,     // 超时错误
-    ConnectionError,  // 连接错误
+    Successful,         // 处理成功+请求成功  这个是没有命中缓存的
+    SuccessfulAndCache, // 处理成功+请求成功 + 命中缓存
+    ParseError,         // 解析错误
+    TimeoutError,       // 超时错误
+    ConnectionError,    // 连接错误
 }
-
 
 // 用于序列化和反序列化的导入
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -61,7 +81,7 @@ pub struct TimePeriod {
 
 // 统计信息结构体
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Stats {
+pub struct StatsBase {
     // 服务器名称
     #[serde(rename = "serverName")]
     pub server_name: String,
@@ -74,9 +94,17 @@ pub struct Stats {
     // 爬虫类型
     #[serde(rename = "scraperType")]
     pub scraper_type: String,
+
     // 请求频率（每秒请求次数）
     #[serde(rename = "requestFrequency")]
     pub request_frequency: i64,
+}
+// 统计信息结构体
+#[derive(Serialize, Clone, Debug)]
+pub struct Stats<'a> {
+    #[serde(flatten)]
+    pub base: &'a StatsBase,
+
     // 时间周期
     #[serde(rename = "timePeriod")]
     pub time_period: TimePeriod,

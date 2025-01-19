@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use std::ops::Deref;
+use std::thread;
 use time::Duration;
 use tokio::sync::broadcast::Sender;
-use tracing::info;
+use tracing::{error, info};
 
 pub mod entity;
 pub mod push;
@@ -46,14 +47,41 @@ impl<T> Global<T> {
 }
 
 /// 爬虫统计
-pub static SPIDER_STATS: Lazy<stats::RequestStats> = Lazy::new(|| stats::RequestStats::new());
+static SPIDER_STATS: Lazy<stats::RequestStats> = Lazy::new(|| stats::RequestStats::new());
 
-pub static SPIDER_STATS_PUSH: Global<Sender<String>> = Global::new();
+static SPIDER_STATS_PUSH: Global<Sender<String>> = Global::new();
+
+static GET_HOSTS: Global<Box<dyn Fn() -> Result<Vec<String>> + Send + Sync>> = Global::new();
 
 // 初始化爬虫推送
-pub fn init_spider_vars(push_target: Vec<String>) -> Result<()> {
-    let s = push::load_broadcast_chan(push_target);
-    SPIDER_STATS_PUSH.init(s).map_err(|err| anyhow!("{:?}",err))?;
+pub fn init_spider_vars(
+    config: RequestStatsConfig,
+    base: StatsBase,
+
+    get_host_call: Box<dyn Fn() -> Result<Vec<String>> + Send + Sync>,
+) -> Result<()> {
+    let s = push::load_broadcast_chan(config.target.clone());
+    SPIDER_STATS_PUSH
+        .init(s)
+        .map_err(|err| anyhow!("{:?}", err))?;
+
+    GET_HOSTS
+        .init(get_host_call)
+        .map_err(|e| anyhow!("设置 get host call 失败"))?;
+
+    // 开启线程；定时去发送任务信息
+    thread::spawn(move || loop {
+        thread::sleep(config.reporting_cycle);
+
+        let host = match GET_HOSTS() {
+            Ok(s) => Some((s, config.host_test_port)),
+            Err(err) => {
+                error!("获取 hosts 数据失败：{}", err);
+                None
+            }
+        };
+        send_stats(&base, host);
+    });
 
     Ok(())
 }
@@ -70,21 +98,12 @@ pub fn update_stats(
 
 // 更新爬虫统计状态
 pub fn send_stats(
-    server_name: String,
-    scraper_name: String,
-    project_code: String,
-    scraper_type: String,
+    base: &StatsBase,
 
     // 用于测试 hosts 的延迟
     host_info: Option<(Vec<String>, u16)>,
 ) {
-    let stats = SPIDER_STATS.to_stats_and_reset(
-        server_name,
-        scraper_name,
-        project_code,
-        scraper_type,
-        host_info,
-    );
+    let stats = SPIDER_STATS.to_stats_and_reset(base, host_info);
 
     let msg = serde_json::to_string(&stats).unwrap();
     info!("发送统计信息: {}", msg);

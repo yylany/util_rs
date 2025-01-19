@@ -1,4 +1,7 @@
+use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
+use std::str::FromStr;
+use std::time::Duration;
 
 pub mod aes;
 pub mod file;
@@ -28,4 +31,16 @@ pub fn blacklist_detach(li: &str) -> HashSet<String> {
     li.split(",")
         .map(|s| s.trim().trim_matches('\"').trim().to_string())
         .collect()
+}
+
+
+pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value: String = Deserialize::deserialize(deserializer)?;
+    Ok(humantime::Duration::from_str(&value)
+        .map_err(|err| D::Error::custom(err.to_string()))?
+        .into())
 }
