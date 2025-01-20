@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
@@ -62,10 +63,9 @@ impl RequestStats {
 
         let mut data = self.inner.lock();
         let mut d = data.to_stats_and_reset(base);
-        d.hosts_ping_delay = host_ping;
+        data.reset();
 
-        // 替换统计对象信息
-        *data = InnerStats::new();
+        d.hosts_ping_delay = host_ping;
 
         d
     }
@@ -76,6 +76,25 @@ struct InnerStats {
     pub init_time: i64,
     // 当前统计周期的开始时间（毫秒级时间戳）
     pub start_time: i64,
+
+    pub base: InnerStatsVal,
+}
+
+impl Deref for InnerStats {
+    type Target = InnerStatsVal;
+    fn deref(&self) -> &Self::Target {
+        &self.base
+    }
+}
+
+impl DerefMut for InnerStats {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.base
+    }
+}
+
+#[derive(Default)]
+struct InnerStatsVal {
     // 总请求数
     pub total_requests: i64,
     // 成功请求数
@@ -103,15 +122,7 @@ impl InnerStats {
         Self {
             init_time: current_time,
             start_time: current_time,
-            total_requests: 0,
-            successful_requests: 0,
-            parse_errors: 0,
-            timeout_errors: 0,
-            connection_errors: 0,
-            cache_hit: 0,
-            http_status_codes: HashMap::new(),
-            total_latency: 0,
-            average_latency: 0.0,
+            base: Default::default(),
         }
     }
 
@@ -175,6 +186,8 @@ impl InnerStats {
             end: end_time,
         };
 
+        self.start_time = end_time;
+
         // 构造异常类型统计
         let exception_types = ExceptionTypes {
             connection_error: self.connection_errors,
@@ -221,6 +234,10 @@ impl InnerStats {
         };
 
         stats
+    }
+
+    pub fn reset(&mut self) {
+        self.base = Default::default();
     }
 }
 

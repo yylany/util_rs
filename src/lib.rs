@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
 pub mod client;
@@ -6,6 +7,8 @@ pub mod client;
 pub mod notify;
 pub mod spider;
 pub mod tool;
+
+static GLOBAL_RUNTIME: Lazy<Runtime> = Lazy::new(|| get_new_rn(3, "util"));
 
 pub fn get_new_rn(num: usize, th_name: &str) -> Runtime {
     let rn = tokio::runtime::Builder::new_multi_thread()
@@ -23,6 +26,8 @@ mod tests {
     use crate::spider::stats::get_system_resources;
     use crate::spider::{RequestStatsConfig, StatsBase};
     use anyhow::Result;
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn it_works() {
@@ -63,15 +68,19 @@ mod tests {
 
         spider::init_spider_vars(
             RequestStatsConfig {
-                target: vec![],
-                reporting_cycle: Default::default(),
+                target: vec!["ws://35.79.121.103:5003".to_string()],
+                reporting_cycle: Duration::from_secs(10000),
                 host_test_port: 0,
             },
-            base,
+            base.clone(),
             // Box::new(|| Ok(vec!["ssss".to_string()])),
             Box::new(get_hosts),
         )
-            .unwrap()
+            .unwrap();
+
+        thread::sleep(Duration::from_secs(5));
+
+        spider::send_stats(&base, None);
     }
 
     fn get_hosts() -> Result<Vec<String>> {

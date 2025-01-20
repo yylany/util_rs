@@ -49,7 +49,7 @@ impl<T> Global<T> {
 /// 爬虫统计
 static SPIDER_STATS: Lazy<stats::RequestStats> = Lazy::new(|| stats::RequestStats::new());
 
-static SPIDER_STATS_PUSH: Global<Sender<String>> = Global::new();
+pub(crate) static SPIDER_STATS_PUSH: Global<Sender<String>> = Global::new();
 
 static GET_HOSTS: Global<Box<dyn Fn() -> Result<Vec<String>> + Send + Sync>> = Global::new();
 
@@ -61,6 +61,7 @@ pub fn init_spider_vars(
     get_host_call: Box<dyn Fn() -> Result<Vec<String>> + Send + Sync>,
 ) -> Result<()> {
     let s = push::load_broadcast_chan(config.target.clone());
+
     SPIDER_STATS_PUSH
         .init(s)
         .map_err(|err| anyhow!("{:?}", err))?;

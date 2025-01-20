@@ -1,7 +1,7 @@
 // 推送爬虫统计信息
 // 使用广播的版本；
 use crate::client::websocket::connect_to_ws_with_timeout;
-use crate::get_new_rn;
+use crate::{get_new_rn, GLOBAL_RUNTIME};
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt, TryFutureExt};
 use once_cell::sync::Lazy;
@@ -19,8 +19,6 @@ use tracing::{error, info};
 const PING_KEEP_ALIVE: u64 = 30_000;
 // 重连 间隔 ms
 const RECONNECTION_DELAY: u64 = 3_000;
-
-static GLOBAL_RUNTIME: Lazy<Runtime> = Lazy::new(|| get_new_rn(3, "util"));
 
 pub fn load_broadcast_chan(push_target: Vec<String>) -> Sender<String> {
     println!("初始化消息转推");
