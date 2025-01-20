@@ -268,17 +268,22 @@ pub fn get_system_resources() -> SystemResources {
 
 /// 测试tcp 连接耗时; 返回连接的耗时
 pub fn run_test_tcp(addr: &str, port: u16, ping_timeout: Duration) -> Result<u64> {
-    let resolve_ip = IpAddr::from_str(addr)?;
+    let sk = match addr.parse::<SocketAddr>() {
+        Ok(sock) => sock,
+        Err(_) => {
+            let resolve_ip = IpAddr::from_str(addr)?;
 
+            SocketAddr::new(resolve_ip, port)
+        }
+    };
     let start_time = Instant::now();
-    let _ = TcpStream::connect_timeout(&SocketAddr::new(resolve_ip, port), ping_timeout).map_err(
-        |err| {
-            anyhow!(
-                "当前连接时长：{} ms;错误信息：{err}",
-                start_time.elapsed().as_millis()
-            )
-        },
-    )?;
+
+    let _ = TcpStream::connect_timeout(&sk, ping_timeout).map_err(|err| {
+        anyhow!(
+            "当前连接时长：{} ms;错误信息：{err}",
+            start_time.elapsed().as_millis()
+        )
+    })?;
     let elapsed_time = start_time.elapsed();
     Ok(elapsed_time.as_micros() as u64)
 }
