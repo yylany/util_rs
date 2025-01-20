@@ -1,3 +1,5 @@
+use tokio::runtime::Runtime;
+
 pub mod client;
 
 #[cfg(feature = "notify")]
@@ -5,8 +7,14 @@ pub mod notify;
 pub mod spider;
 pub mod tool;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub fn get_new_rn(num: usize, th_name: &str) -> Runtime {
+    let rn = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(num)
+        .thread_name(th_name)
+        .enable_all()
+        .build()
+        .unwrap();
+    rn
 }
 
 #[cfg(test)]

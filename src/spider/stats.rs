@@ -53,6 +53,7 @@ impl RequestStats {
                     Err(_) => timeout.as_micros() as u64,
                 };
 
+                // 0.6ms
                 // 微秒转成毫秒
                 let ms = connet_ts as f64 / 1000.0;
                 host_ping.insert(host, ms);
@@ -277,7 +278,6 @@ pub fn run_test_tcp(addr: &str, port: u16, ping_timeout: Duration) -> Result<u64
         }
     };
     let start_time = Instant::now();
-
     let _ = TcpStream::connect_timeout(&sk, ping_timeout).map_err(|err| {
         anyhow!(
             "当前连接时长：{} ms;错误信息：{err}",
