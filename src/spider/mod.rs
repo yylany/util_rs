@@ -106,9 +106,11 @@ pub fn send_stats(
     let stats = SPIDER_STATS.to_stats_and_reset(base, host_info);
 
     let msg = serde_json::to_string(&stats).unwrap();
-    info!("发送统计信息: {}", msg);
 
     if let Err(err) = SPIDER_STATS_PUSH.send(msg) {
         info!("发送统计信息失败：{}", err);
     }
+
+    let msg = serde_json::to_string_pretty(&stats).unwrap();
+    info!("发送统计信息: {}", msg);
 }

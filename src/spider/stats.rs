@@ -133,10 +133,13 @@ impl InnerStats {
         self.average_latency = self.total_latency as f64 / self.total_requests as f64;
 
         // 更新 HTTP 状态码统计
-        *self
-            .http_status_codes
-            .entry(status_code.clone())
-            .or_insert(0) += 1;
+        // 很多爬虫都是使用0 代替；这里直接忽略0 的情况
+        if status_code != 0 {
+            *self
+                .http_status_codes
+                .entry(status_code.clone())
+                .or_insert(0) += 1;
+        }
 
         // 根据请求结果更新对应的统计数据
         match result {
@@ -187,9 +190,14 @@ impl InnerStats {
         };
 
         // 计算运行时长（从对象初始化到当前时间）
-        let runtime_duration = end_time - self.init_time;
+        let runtime_duration = (end_time - self.init_time) / 1000;
 
-        let cache_hit_rate = self.cache_hit as f64 / self.successful_requests as f64;
+        let cache_hit_rate = if self.successful_requests == 0 {
+            0.0
+        } else {
+            let cache_hit_rate = self.cache_hit as f64 / self.successful_requests as f64;
+            (cache_hit_rate * 1000.0).round() / 1000.0
+        };
 
         // 构造 `Stats` 结构体
         let stats = Stats {
@@ -206,7 +214,7 @@ impl InnerStats {
                 .iter()
                 .map(|(k, v)| (k.to_string(), *v))
                 .collect(),
-            average_request_latency: self.average_latency,
+            average_request_latency: (self.average_latency * 1000.0).round() / 1000.0,
             hosts_ping_delay: HashMap::new(), // 假设没有主机延迟数据，可以根据需要补充
             system_resources: get_system_resources(),
         };

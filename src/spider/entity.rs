@@ -80,7 +80,7 @@ pub struct TimePeriod {
 }
 
 // 统计信息结构体
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StatsBase {
     // 服务器名称
     #[serde(rename = "serverName")]
@@ -97,6 +97,7 @@ pub struct StatsBase {
 
     // 请求频率（每秒请求次数）
     #[serde(rename = "requestFrequency")]
+    #[serde(default)]
     pub request_frequency: i64,
 }
 // 统计信息结构体
