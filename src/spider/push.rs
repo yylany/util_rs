@@ -28,7 +28,7 @@ pub fn load_broadcast_chan(push_target: Vec<String>) -> Sender<String> {
 
     if !push_target.is_empty() {
         let s = create_order_sender.clone();
-        tokio::spawn(init_websocket(push_target, s));
+        GLOBAL_RUNTIME.spawn(init_websocket(push_target, s));
     }
 
     create_order_sender
