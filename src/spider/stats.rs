@@ -214,7 +214,7 @@ impl InnerStats {
         let stats = Stats {
             base,
             time_period,
-            error_rate,
+            error_rate: (error_rate * 1000.0).round() / 1000.0,
             exception_types,
             runtime_duration,
             total_requests: self.total_requests,
