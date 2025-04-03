@@ -7,7 +7,25 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use reqwest::{ClientBuilder, Method, Response, StatusCode, Url};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use reqwest::redirect::Policy;
+use reqwest::{Client, ClientBuilder, Method, Response, StatusCode, Url};
+
+static CLI: Lazy<Mutex<HashMap<Option<String>, Client>>> = Lazy::new(|| Default::default());
+
+fn get_or_create_client(proxy: &Option<String>) -> Client {
+    CLI.lock()
+        .entry(proxy.clone())
+        .or_insert_with(|| {
+            println!("创建 proxy: {:?} 的cli", proxy);
+            gen_client_builder(proxy)
+                .redirect(Policy::default())
+                .build()
+                .expect("Failed to build client")
+        })
+        .clone()
+}
 
 pub async fn get(
     url: &str,
@@ -74,7 +92,7 @@ pub async fn exec_req(
     method: Method,
     body: Option<String>,
 ) -> Result<Response> {
-    let cli = gen_client_builder(proxy).build()?;
+    let cli = get_or_create_client(proxy);
 
     let mut req_build = cli.request(method, url);
     if let Some(req_heads) = req_head {
@@ -177,7 +195,10 @@ fn with_proxy(mut cli: ClientBuilder, proxy: &Option<String>) -> ClientBuilder {
                         let mut p = reqwest::Proxy::all(proxy_url).unwrap();
 
                         if url.has_authority() && url.username() != "" {
-                            p = p.basic_auth(url.username(), url.password().unwrap_or_default());
+                            let u = url_info_decode(url.username());
+                            let pass = url_info_decode(url.password().unwrap_or_default());
+
+                            p = p.basic_auth(&u, &pass);
                         }
 
                         cli.proxy(p)
@@ -188,4 +209,11 @@ fn with_proxy(mut cli: ClientBuilder, proxy: &Option<String>) -> ClientBuilder {
             }
         },
     }
+}
+
+// url 解码
+pub fn url_info_decode(text: &str) -> String {
+    urlencoding::decode(text)
+        .map(|decoded| decoded.to_string())
+        .unwrap_or_else(|_| text.to_string())
 }
