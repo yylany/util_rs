@@ -1,9 +1,9 @@
-use std::ops::{Deref, DerefMut};
-
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::AtomicUsize;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct MyI64(i64);
@@ -127,4 +127,61 @@ where
     S: Serializer,
 {
     serializer.serialize_f64(value.to_f64().unwrap_or_default())
+}
+
+/// 可以调用不同的数据进行迭代;需要支持反序列化；
+#[derive(Debug, Default)]
+pub struct IterLoop<T> {
+    data: Vec<T>,
+    index: AtomicUsize,
+}
+
+impl<T> IterLoop<T> {
+    pub fn new(data: Vec<T>) -> Self {
+        Self {
+            data,
+            index: AtomicUsize::new(0),
+        }
+    }
+
+    // 一直获取下一个数据；会循环列表；如果数据为空，会返回none
+    pub fn next(&self) -> Option<&T> {
+        if self.data.is_empty() {
+            return None;
+        }
+
+        let index = self
+            .index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        self.data.get(index % self.data.len())
+    }
+}
+
+impl<'de, T> Deserialize<'de> for IterLoop<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        enum Iter<T> {
+            One(T),
+            Many(Vec<T>),
+        }
+
+        let data = Iter::deserialize(deserializer)?;
+
+        Ok(Self {
+            data: match data {
+                Iter::One(s) => {
+                    vec![s]
+                }
+                Iter::Many(s) => s,
+            },
+            index: AtomicUsize::new(0),
+        })
+    }
 }
