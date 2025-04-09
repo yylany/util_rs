@@ -1,9 +1,9 @@
+use once_cell::sync::OnceCell;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::AtomicUsize;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct MyI64(i64);
@@ -129,59 +129,37 @@ where
     serializer.serialize_f64(value.to_f64().unwrap_or_default())
 }
 
-/// 可以调用不同的数据进行迭代;需要支持反序列化；
-#[derive(Debug, Default)]
-pub struct IterLoop<T> {
-    data: Vec<T>,
-    index: AtomicUsize,
-}
+// 使用泛型 T 的包装类型
+pub struct Global<T>(OnceCell<T>);
 
-impl<T> IterLoop<T> {
-    pub fn new(data: Vec<T>) -> Self {
-        Self {
-            data,
-            index: AtomicUsize::new(0),
-        }
-    }
+// 为泛型实现 Deref trait
+impl<T> Deref for Global<T> {
+    type Target = T;
 
-    // 一直获取下一个数据；会循环列表；如果数据为空，会返回none
-    pub fn next(&self) -> Option<&T> {
-        if self.data.is_empty() {
-            return None;
-        }
-
-        let index = self
-            .index
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-        self.data.get(index % self.data.len())
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.get_unchecked() }
     }
 }
 
-impl<'de, T> Deserialize<'de> for IterLoop<T>
-where
-    T: Deserialize<'de>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        enum Iter<T> {
-            One(T),
-            Many(Vec<T>),
-        }
+// 为泛型实现通用方法
+impl<T> Global<T> {
+    // 创建新实例
+    pub const fn new() -> Self {
+        Self(OnceCell::new())
+    }
 
-        let data = Iter::deserialize(deserializer)?;
+    // 初始化方法
+    pub fn init(&self, value: T) -> Result<(), T> {
+        self.0.set(value)
+    }
 
-        Ok(Self {
-            data: match data {
-                Iter::One(s) => {
-                    vec![s]
-                }
-                Iter::Many(s) => s,
-            },
-            index: AtomicUsize::new(0),
-        })
+    // 安全获取值的方法
+    pub fn get(&self) -> Option<&T> {
+        self.0.get()
+    }
+
+    // 检查是否已初始化
+    pub fn is_initialized(&self) -> bool {
+        self.0.get().is_some()
     }
 }
