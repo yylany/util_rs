@@ -14,17 +14,28 @@ use reqwest::{Client, ClientBuilder, Method, Response, StatusCode, Url};
 
 static CLI: Lazy<Mutex<HashMap<Option<String>, Client>>> = Lazy::new(|| Default::default());
 
-fn get_or_create_client(proxy: &Option<String>) -> Client {
+pub fn get_or_create_client(proxy: &Option<String>, url: &str, dns: Option<&str>) -> Client {
     CLI.lock()
         .entry(proxy.clone())
         .or_insert_with(|| {
             println!("创建 proxy: {:?} 的cli", proxy);
-            gen_client_builder(proxy)
-                .redirect(Policy::default())
-                .build()
-                .expect("Failed to build client")
+            build_cli(proxy, url, dns)
         })
         .clone()
+}
+// 清理所有缓存中的cli
+pub fn clean_all_cli() {
+    CLI.lock().clear();
+}
+
+fn build_cli(proxy: &Option<String>, url: &str, dns: Option<&str>) -> Client {
+    let mut cli = gen_client_builder(proxy).redirect(Policy::default());
+    if let Some(addr) = dns {
+        let h = url.parse::<Url>().unwrap().host().unwrap().to_string();
+        cli = cli.resolve(&h, addr.parse().unwrap())
+    }
+
+    cli.build().expect("Failed to build client")
 }
 
 pub async fn get(
@@ -32,7 +43,7 @@ pub async fn get(
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
 ) -> Result<String> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, None).await;
+    let resp = exec_req(url, req_head, proxy, Method::GET, None, false, None).await;
     let mut _req_head = Vec::new();
     if let Some(req_heads) = req_head {
         // 添加默认的请求头参数
@@ -48,7 +59,7 @@ pub async fn exec_get(
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
 ) -> Result<(StatusCode, String)> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, None).await?;
+    let resp = exec_req(url, req_head, proxy, Method::GET, None, false, None).await?;
     let status = resp.status();
     let text = resp.text().await?;
     Ok((status, text))
@@ -60,7 +71,7 @@ pub async fn post(
     proxy: &Option<String>,
     body: String,
 ) -> Result<String> {
-    let resp = exec_req(url, req_head, proxy, Method::POST, Some(body)).await;
+    let resp = exec_req(url, req_head, proxy, Method::POST, Some(body), false, None).await;
     let mut _req_head = Vec::new();
 
     if let Some(req_heads) = req_head {
@@ -79,7 +90,7 @@ pub async fn exec_post(
     proxy: &Option<String>,
     body: String,
 ) -> Result<(StatusCode, String)> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, Some(body)).await?;
+    let resp = exec_req(url, req_head, proxy, Method::GET, Some(body), false, None).await?;
     let status = resp.status();
     let text = resp.text().await?;
     Ok((status, text))
@@ -91,8 +102,14 @@ pub async fn exec_req(
     proxy: &Option<String>,
     method: Method,
     body: Option<String>,
+    force_newcli: bool, // 是否强制使用新的cli
+    dns: Option<&str>,
 ) -> Result<Response> {
-    let cli = get_or_create_client(proxy);
+    let cli = if force_newcli {
+        build_cli(proxy, url, dns)
+    } else {
+        get_or_create_client(proxy, url, dns)
+    };
 
     let mut req_build = cli.request(method, url);
     if let Some(req_heads) = req_head {
