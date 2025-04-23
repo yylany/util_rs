@@ -14,12 +14,17 @@ use reqwest::{Client, ClientBuilder, Method, Response, StatusCode, Url};
 
 static CLI: Lazy<Mutex<HashMap<Option<String>, Client>>> = Lazy::new(|| Default::default());
 
-pub fn get_or_create_client(proxy: &Option<String>, url: &str, dns: Option<&str>) -> Client {
+pub fn get_or_create_client(
+    proxy: &Option<String>,
+    url: &str,
+    dns: Option<&str>,
+    timeout: Duration,
+) -> Client {
     CLI.lock()
         .entry(proxy.clone())
         .or_insert_with(|| {
             println!("创建 proxy: {:?} 的cli", proxy);
-            build_cli(proxy, url, dns)
+            build_cli(proxy, url, dns, timeout)
         })
         .clone()
 }
@@ -28,8 +33,8 @@ pub fn clean_all_cli() {
     CLI.lock().clear();
 }
 
-fn build_cli(proxy: &Option<String>, url: &str, dns: Option<&str>) -> Client {
-    let mut cli = gen_client_builder(proxy).redirect(Policy::default());
+fn build_cli(proxy: &Option<String>, url: &str, dns: Option<&str>, timeout: Duration) -> Client {
+    let mut cli = gen_client_builder(proxy, timeout).redirect(Policy::default());
     if let Some(addr) = dns {
         let h = url.parse::<Url>().unwrap().host().unwrap().to_string();
         cli = cli.resolve(&h, addr.parse().unwrap())
@@ -42,8 +47,19 @@ pub async fn get(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
+    timeout: Duration,
 ) -> Result<String> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, None, false, None).await;
+    let resp = exec_req(
+        url,
+        req_head,
+        proxy,
+        Method::GET,
+        None,
+        false,
+        None,
+        timeout,
+    )
+        .await;
     let mut _req_head = Vec::new();
     if let Some(req_heads) = req_head {
         // 添加默认的请求头参数
@@ -58,8 +74,19 @@ pub async fn exec_get(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
+    timeout: Duration,
 ) -> Result<(StatusCode, String)> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, None, false, None).await?;
+    let resp = exec_req(
+        url,
+        req_head,
+        proxy,
+        Method::GET,
+        None,
+        false,
+        None,
+        timeout,
+    )
+        .await?;
     let status = resp.status();
     let text = resp.text().await?;
     Ok((status, text))
@@ -70,8 +97,19 @@ pub async fn post(
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
     body: String,
+    timeout: Duration,
 ) -> Result<String> {
-    let resp = exec_req(url, req_head, proxy, Method::POST, Some(body), false, None).await;
+    let resp = exec_req(
+        url,
+        req_head,
+        proxy,
+        Method::POST,
+        Some(body),
+        false,
+        None,
+        timeout,
+    )
+        .await;
     let mut _req_head = Vec::new();
 
     if let Some(req_heads) = req_head {
@@ -89,8 +127,19 @@ pub async fn exec_post(
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
     body: String,
+    timeout: Duration,
 ) -> Result<(StatusCode, String)> {
-    let resp = exec_req(url, req_head, proxy, Method::GET, Some(body), false, None).await?;
+    let resp = exec_req(
+        url,
+        req_head,
+        proxy,
+        Method::GET,
+        Some(body),
+        false,
+        None,
+        timeout,
+    )
+        .await?;
     let status = resp.status();
     let text = resp.text().await?;
     Ok((status, text))
@@ -104,11 +153,12 @@ pub async fn exec_req(
     body: Option<String>,
     force_newcli: bool, // 是否强制使用新的cli
     dns: Option<&str>,
+    timeout: Duration,
 ) -> Result<Response> {
     let cli = if force_newcli {
-        build_cli(proxy, url, dns)
+        build_cli(proxy, url, dns, timeout)
     } else {
-        get_or_create_client(proxy, url, dns)
+        get_or_create_client(proxy, url, dns, timeout)
     };
 
     let mut req_build = cli.request(method, url);
@@ -173,15 +223,15 @@ pub async fn handler_resp(
 }
 
 /// 生成 ClientBuilder
-pub fn gen_client_builder(proxy: &Option<String>) -> ClientBuilder {
+pub fn gen_client_builder(proxy: &Option<String>, timeout: Duration) -> ClientBuilder {
     let cli = ClientBuilder::new();
-    with_proxy(cli, proxy)
+    with_proxy(cli, proxy, timeout)
 }
 
 /// 加载并配置代理
-fn with_proxy(mut cli: ClientBuilder, proxy: &Option<String>) -> ClientBuilder {
+fn with_proxy(mut cli: ClientBuilder, proxy: &Option<String>, timeout: Duration) -> ClientBuilder {
     cli = cli
-        .timeout(Duration::from_millis(3000))
+        .timeout(timeout)
         .danger_accept_invalid_certs(true)
         .pool_idle_timeout(None)
         .tcp_keepalive(None)

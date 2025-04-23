@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use std::time::Duration;
 
 ///加载本地hosts文件
 async fn load_file_host(path: &str) -> Result<String> {
@@ -35,5 +36,5 @@ pub fn split_txt(txt: impl AsRef<str>) -> Vec<String> {
 
 ///加载远程地址的hosts文件
 async fn load_url_host(url: &str) -> Result<String> {
-    super::req::get(url, None, &None).await
+    super::req::get(url, None, &None, Duration::from_millis(30000)).await
 }
