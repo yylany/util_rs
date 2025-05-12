@@ -233,8 +233,8 @@ fn with_proxy(mut cli: ClientBuilder, proxy: &Option<String>, timeout: Duration)
     cli = cli
         .timeout(timeout)
         .danger_accept_invalid_certs(true)
-        .pool_idle_timeout(None)
-        .tcp_keepalive(None)
+        // .pool_idle_timeout(None)
+        // .tcp_keepalive(None)
         .gzip(true);
     match proxy {
         None => match env::var("HTTP_PROXY") {
