@@ -122,29 +122,6 @@ pub async fn post(
     handler_resp(resp, url, &_req_head).await
 }
 
-pub async fn exec_post(
-    url: &str,
-    req_head: Option<&HashMap<String, String>>,
-    proxy: &Option<String>,
-    body: String,
-    timeout: Duration,
-) -> Result<(StatusCode, String)> {
-    let resp = exec_req(
-        url,
-        req_head,
-        proxy,
-        Method::GET,
-        Some(body),
-        false,
-        None,
-        timeout,
-    )
-        .await?;
-    let status = resp.status();
-    let text = resp.text().await?;
-    Ok((status, text))
-}
-
 pub async fn exec_req(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
