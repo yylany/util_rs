@@ -191,13 +191,46 @@ impl TgBot {
             let bot = self.tg_bot.clone();
             let list = self.push_list.clone();
 
-            for x in list.iter() {
-                match bot.send_message(x.to_string(), msg.clone()).await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        // error!("{:#?}", e)
+            let parts = split_message(&msg, 4000);
+            let total_pages = parts.len();
+
+            if total_pages > 1 {
+                for chat_id in list.iter() {
+                    let max_retries = 3;
+                    for (index, part) in parts.iter().enumerate() {
+                        let page_info = format!("\n\n--- 第 {}/{} 页 ---", index + 1, total_pages);
+                        let message_with_page = format!("{}{}", part, page_info);
+
+                        let mut retries = 0;
+                        while retries < max_retries {
+                            match bot
+                                .send_message(chat_id.to_string(), &message_with_page)
+                                .await
+                            {
+                                Ok(_) => break,
+                                Err(err) => {
+                                    retries += 1;
+                                    if retries == max_retries {
+                                        return;
+                                    }
+                                    error!("tg 发送消息失败：{}", err);
+                                }
+                            }
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     }
-                };
+                }
+            } else {
+                for x in list.iter() {
+                    match bot.send_message(x.to_string(), msg.clone()).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            error!("tg 发送消息失败：{}", err);
+
+                            // error!("{:#?}", e)
+                        }
+                    };
+                }
             }
         }
     }
@@ -340,4 +373,23 @@ impl TgBot {
             }
         }
     }
+}
+
+fn split_message(text: &str, max_length: usize) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut current = String::new();
+
+    for char in text.chars() {
+        if current.chars().count() >= max_length {
+            result.push(current);
+            current = String::new();
+        }
+        current.push(char);
+    }
+
+    if !current.is_empty() {
+        result.push(current);
+    }
+
+    result
 }
