@@ -36,5 +36,5 @@ pub fn split_txt(txt: impl AsRef<str>) -> Vec<String> {
 
 ///加载远程地址的hosts文件
 async fn load_url_host(url: &str) -> Result<String> {
-    super::req::get(url, None, &None, Duration::from_millis(30000)).await
+    super::req::get_with_timeout(url, None, &None, Duration::from_millis(30000)).await
 }

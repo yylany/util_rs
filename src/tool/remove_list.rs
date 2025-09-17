@@ -47,7 +47,7 @@ pub async fn url_call(msg: &str, call_urls: &Vec<String>, call_count: i32) {
             // 替换成实际请求的url
             let nurl = url.replace("{}", &msg);
             tokio::spawn(async move {
-                super::req::get(&nurl, None, &None, Duration::from_secs(20))
+                super::req::get_with_timeout(&nurl, None, &None, Duration::from_secs(20))
                     .await
                     .unwrap();
             });
@@ -116,13 +116,14 @@ pub async fn merge(url: &str, data: &mut HashSet<String>, retry: u8) -> Result<(
     let mut er = Ok(());
 
     for _ in 0..retry {
-        let text = match super::req::get(url, None, &None, Duration::from_secs(10)).await {
-            Ok(s) => s,
-            Err(err) => {
-                er = Err(err);
-                continue;
-            }
-        };
+        let text =
+            match super::req::get_with_timeout(url, None, &None, Duration::from_secs(10)).await {
+                Ok(s) => s,
+                Err(err) => {
+                    er = Err(err);
+                    continue;
+                }
+            };
 
         if text.is_empty() {
             er = Err(anyhow!("响应数据为空"));
@@ -149,13 +150,14 @@ where
     let mut er = Err(anyhow!("加载失败"));
 
     for _ in 0..retry {
-        let text = match super::req::get(url, None, &None, Duration::from_secs(10)).await {
-            Ok(s) => s,
-            Err(err) => {
-                er = Err(err);
-                continue;
-            }
-        };
+        let text =
+            match super::req::get_with_timeout(url, None, &None, Duration::from_secs(10)).await {
+                Ok(s) => s,
+                Err(err) => {
+                    er = Err(err);
+                    continue;
+                }
+            };
 
         if text.is_empty() {
             er = Err(anyhow!("响应数据为空"));
