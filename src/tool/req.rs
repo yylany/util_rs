@@ -47,6 +47,13 @@ pub async fn get(
     url: &str,
     req_head: Option<&HashMap<String, String>>,
     proxy: &Option<String>,
+) -> Result<String> {
+    get_with_timeout(url, req_head, proxy, Duration::from_secs(10)).await
+}
+pub async fn get_with_timeout(
+    url: &str,
+    req_head: Option<&HashMap<String, String>>,
+    proxy: &Option<String>,
     timeout: Duration,
 ) -> Result<String> {
     let resp = exec_req(
