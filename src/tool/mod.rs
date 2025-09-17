@@ -12,13 +12,19 @@ pub mod remove_list;
 pub mod req;
 pub mod typ;
 
+pub mod num;
 #[cfg(feature = "openssl")]
 pub mod openssl_aes;
-pub mod num;
 
 /// base 别名移除
 pub fn base_trim(base: &str) -> &str {
-    let ts = base.trim_start_matches("1M").trim_start_matches("1000").trim_start_matches('0');
+    let ts = if base.starts_with("1") {
+        base.trim_start_matches("1M")
+            .trim_start_matches("1000")
+            .trim_start_matches('0')
+    } else {
+        base
+    };
 
     if ts.ends_with("000") {
         ts.trim_end_matches('0').trim_end_matches('1')
@@ -32,7 +38,6 @@ pub fn blacklist_detach(li: &str) -> HashSet<String> {
         .map(|s| s.trim().trim_matches('\"').trim().to_string())
         .collect()
 }
-
 
 pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
