@@ -12,6 +12,7 @@ pub mod remove_list;
 pub mod req;
 pub mod typ;
 
+pub mod config;
 pub mod num;
 #[cfg(feature = "openssl")]
 pub mod openssl_aes;
